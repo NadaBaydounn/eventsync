@@ -267,9 +267,9 @@ export default function RegisterPage() {
                         aria-label={showPassword ? 'Hide password' : 'Show password'}
                       >
                         {showPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
                           <Eye className="h-4 w-4" />
+                        ) : (
+                          <EyeOff className="h-4 w-4" />
                         )}
                       </button>
                     </div>
@@ -347,9 +347,9 @@ export default function RegisterPage() {
                         aria-label={showConfirm ? 'Hide password' : 'Show password'}
                       >
                         {showConfirm ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
                           <Eye className="h-4 w-4" />
+                        ) : (
+                          <EyeOff className="h-4 w-4" />
                         )}
                       </button>
                     </div>
