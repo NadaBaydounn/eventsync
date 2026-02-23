@@ -12,16 +12,26 @@ export function useEvents() {
 
   const fetchEvents = useCallback(async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('events')
-      .select('*')
-      .order('start_time', { ascending: true })
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 10000)
 
-    if (error) {
-      console.error('Error fetching events:', error)
-      toast.error('Failed to load events')
-    } else {
-      setEvents(data || [])
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .order('start_time', { ascending: true })
+        .abortSignal(controller.signal)
+
+      clearTimeout(timeout)
+
+      if (error) {
+        console.error('Error fetching events:', error)
+        toast.error('Failed to load events')
+      } else {
+        setEvents(data || [])
+      }
+    } catch {
+      toast.error('Connection timed out. Check your internet or Supabase project status.')
     }
     setLoading(false)
   }, [])

@@ -19,6 +19,7 @@ export const eventFormSchema = z.object({
   visibility: z.enum(VISIBILITIES).default('private'),
   budget: z.number().min(0).optional().nullable(),
   tags: z.array(z.string()).default([]),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 }).refine((data) => {
   if (data.start_time && data.end_time) {
     return new Date(data.end_time) >= new Date(data.start_time)
