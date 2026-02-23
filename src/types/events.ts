@@ -68,6 +68,7 @@ export interface EventFormData {
   visibility?: Visibility
   budget?: number
   tags?: string[]
+  metadata?: Record<string, unknown>
 }
 
 // ============================================

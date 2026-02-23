@@ -12,8 +12,10 @@ import {
   DollarSign,
   Loader2,
   ChevronLeft,
-  Check,
   CalendarDays,
+  Video,
+  Globe,
+  ChevronDown,
 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
@@ -24,8 +26,6 @@ import {
 } from '@/lib/constants/event-themes'
 import {
   pageVariants,
-  staggerContainer,
-  staggerItem,
   eventAnimations,
 } from '@/lib/constants/animations'
 import { eventFormSchema } from '@/lib/validators/event'
@@ -48,6 +48,81 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+
+/* ─── Theme-specific extra fields per event type ─── */
+const THEME_FIELDS: Record<
+  EventType,
+  Array<{ id: string; label: string; placeholder: string; type: 'text' | 'textarea' }>
+> = {
+  party: [
+    { id: 'dress_code', label: 'Dress Code', placeholder: 'Casual, Semi-formal, Costume...', type: 'text' },
+    { id: 'theme_party', label: 'Party Theme', placeholder: 'e.g., 80s Night, Tropical...', type: 'text' },
+    { id: 'byob', label: 'Food & Drinks', placeholder: 'BYOB, Catered, Potluck...', type: 'text' },
+  ],
+  educational: [
+    { id: 'instructor', label: 'Instructor / Speaker', placeholder: 'Name of instructor or speaker', type: 'text' },
+    { id: 'materials', label: 'Materials Needed', placeholder: 'Notebook, laptop, textbook...', type: 'text' },
+    { id: 'topic', label: 'Topic / Subject', placeholder: 'What will be covered?', type: 'text' },
+  ],
+  trip: [
+    { id: 'destination', label: 'Destination', placeholder: 'Where are you going?', type: 'text' },
+    { id: 'transportation', label: 'Transportation', placeholder: 'Flight, car, train...', type: 'text' },
+    { id: 'packing_notes', label: 'Packing Notes', placeholder: 'What to pack...', type: 'textarea' },
+  ],
+  business: [
+    { id: 'agenda', label: 'Meeting Agenda', placeholder: 'Key discussion points...', type: 'textarea' },
+    { id: 'dress_code', label: 'Dress Code', placeholder: 'Business casual, formal...', type: 'text' },
+    { id: 'attendees_expected', label: 'Expected Attendees', placeholder: 'Number of attendees', type: 'text' },
+  ],
+  sports: [
+    { id: 'sport_type', label: 'Sport / Activity', placeholder: 'Basketball, yoga, running...', type: 'text' },
+    { id: 'fitness_level', label: 'Fitness Level', placeholder: 'Beginner, Intermediate, Advanced', type: 'text' },
+    { id: 'equipment', label: 'Equipment Needed', placeholder: 'Bring your own mat, shoes...', type: 'text' },
+  ],
+  concert: [
+    { id: 'artist', label: 'Artist / Band', placeholder: 'Who is performing?', type: 'text' },
+    { id: 'venue_name', label: 'Venue Name', placeholder: 'Name of the venue', type: 'text' },
+    { id: 'ticket_info', label: 'Ticket Info', placeholder: 'Price, where to buy...', type: 'text' },
+  ],
+  dining: [
+    { id: 'restaurant', label: 'Restaurant Name', placeholder: 'Name of the restaurant', type: 'text' },
+    { id: 'cuisine', label: 'Cuisine Type', placeholder: 'Italian, Japanese, Mexican...', type: 'text' },
+    { id: 'dietary_notes', label: 'Dietary Restrictions', placeholder: 'Vegetarian, gluten-free...', type: 'text' },
+  ],
+  birthday: [
+    { id: 'celebrant', label: 'Who is the Birthday For?', placeholder: 'Name of the birthday person', type: 'text' },
+    { id: 'turning_age', label: 'Turning Age', placeholder: 'How old are they turning?', type: 'text' },
+    { id: 'gift_ideas', label: 'Gift Ideas', placeholder: 'What do they want?', type: 'text' },
+    { id: 'surprise', label: 'Is It a Surprise?', placeholder: 'Yes / No', type: 'text' },
+  ],
+  tech: [
+    { id: 'tech_stack', label: 'Tech Stack / Tools', placeholder: 'React, Python, AWS...', type: 'text' },
+    { id: 'project_link', label: 'Project / Repo Link', placeholder: 'https://github.com/...', type: 'text' },
+    { id: 'prerequisites', label: 'Prerequisites', placeholder: 'Install Node.js, bring laptop...', type: 'text' },
+  ],
+  health: [
+    { id: 'doctor_name', label: 'Doctor / Provider', placeholder: 'Dr. Smith, City Clinic...', type: 'text' },
+    { id: 'appointment_type', label: 'Appointment Type', placeholder: 'Checkup, specialist, dental...', type: 'text' },
+    { id: 'fasting', label: 'Preparation Notes', placeholder: 'Fasting required, bring ID...', type: 'text' },
+  ],
+  art: [
+    { id: 'medium', label: 'Art Medium', placeholder: 'Painting, pottery, photography...', type: 'text' },
+    { id: 'supplies', label: 'Supplies Needed', placeholder: 'Brushes, canvas, camera...', type: 'text' },
+    { id: 'skill_level', label: 'Skill Level', placeholder: 'Beginner-friendly, advanced...', type: 'text' },
+  ],
+  wedding: [
+    { id: 'couple_names', label: 'Couple Names', placeholder: 'Sarah & John', type: 'text' },
+    { id: 'dress_code', label: 'Dress Code', placeholder: 'Black tie, cocktail attire...', type: 'text' },
+    { id: 'registry_link', label: 'Gift Registry', placeholder: 'https://registry.com/...', type: 'text' },
+    { id: 'rsvp_deadline', label: 'RSVP Deadline', placeholder: 'RSVP by date...', type: 'text' },
+  ],
+  volunteer: [
+    { id: 'organization', label: 'Organization', placeholder: 'Name of the organization', type: 'text' },
+    { id: 'role', label: 'Volunteer Role', placeholder: 'What will you be doing?', type: 'text' },
+    { id: 'requirements', label: 'Requirements', placeholder: 'Background check, waiver...', type: 'text' },
+  ],
+  general: [],
+}
 
 function formatDatetimeLocal(dateStr: string): string {
   const d = new Date(dateStr)
@@ -74,8 +149,11 @@ export default function EditEventPage({
   const [event, setEvent] = useState<Event | null>(null)
   const [pageLoading, setPageLoading] = useState(true)
   const [selectedType, setSelectedType] = useState<EventType>('general')
+  const [eventMode, setEventMode] = useState<'onsite' | 'online' | 'hybrid'>('onsite')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [tagsInput, setTagsInput] = useState('')
+  const [themeFields, setThemeFields] = useState<Record<string, string>>({})
+  const [showDetails, setShowDetails] = useState(false)
 
   const theme = getEventTheme(selectedType)
 
@@ -119,6 +197,17 @@ export default function EditEventPage({
     setSelectedType(e.event_type)
     setTagsInput(e.tags?.join(', ') ?? '')
 
+    // Auto-detect event mode
+    if (e.virtual_link && e.location) setEventMode('hybrid')
+    else if (e.virtual_link) setEventMode('online')
+    else setEventMode('onsite')
+
+    // Load theme-specific fields from metadata
+    const meta = (e.metadata as Record<string, unknown>) ?? {}
+    const details = (meta.theme_details as Record<string, string>) ?? {}
+    setThemeFields(details)
+    if (Object.keys(details).length > 0) setShowDetails(true)
+
     // Pre-fill form
     reset({
       title: e.title,
@@ -150,6 +239,15 @@ export default function EditEventPage({
   const handleTypeSelect = (type: EventType) => {
     setSelectedType(type)
     setValue('event_type', type)
+    setThemeFields({})
+    setShowDetails(THEME_FIELDS[type].length > 0)
+  }
+
+  const handleModeChange = (mode: string) => {
+    const m = mode as 'onsite' | 'online' | 'hybrid'
+    setEventMode(m)
+    if (m === 'online') setValue('location', null)
+    if (m === 'onsite') setValue('virtual_link', null)
   }
 
   const onSubmit = async (values: Record<string, unknown>) => {
@@ -160,9 +258,21 @@ export default function EditEventPage({
         .map((t) => t.trim())
         .filter(Boolean)
 
+      // Merge theme-specific fields into metadata
+      const existingMeta = (event?.metadata as Record<string, unknown>) ?? {}
+      const metadata: Record<string, unknown> = { ...existingMeta }
+      const activeFields = THEME_FIELDS[selectedType]
+      if (activeFields.length > 0) {
+        const filled = Object.fromEntries(
+          Object.entries(themeFields).filter(([, v]) => v.trim() !== '')
+        )
+        metadata.theme_details = Object.keys(filled).length > 0 ? filled : undefined
+      }
+
       const result = await updateEvent(id, {
         ...(values as unknown as EventFormData),
         tags,
+        metadata,
       })
       if (result) {
         router.push(`/events/${id}`)
@@ -217,6 +327,9 @@ export default function EditEventPage({
     )
   }
 
+  const activeThemeFields = THEME_FIELDS[selectedType]
+  const animationVariant = eventAnimations[theme.animation] ?? eventAnimations.fadeSlide
+
   return (
     <motion.div
       variants={pageVariants}
@@ -245,347 +358,451 @@ export default function EditEventPage({
         </p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Event Type Selector */}
-        <div className="space-y-3">
-          <Label className="text-base font-semibold">Event Type</Label>
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            animate="show"
-            className="grid grid-cols-4 gap-2 sm:grid-cols-7"
-          >
-            {EVENT_TYPES.map((type) => {
-              const t = EVENT_THEMES[type]
-              const isSelected = selectedType === type
-              return (
-                <motion.button
-                  key={type}
-                  variants={staggerItem}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  type="button"
-                  onClick={() => handleTypeSelect(type)}
-                  className={cn(
-                    'relative flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 transition-all duration-200',
-                    isSelected
-                      ? 'shadow-md'
-                      : 'border-transparent bg-muted/50 hover:bg-muted'
-                  )}
-                  style={
-                    isSelected
-                      ? {
-                          borderColor: t.primaryColor,
-                          backgroundColor: `${t.primaryColor}15`,
-                        }
-                      : undefined
-                  }
-                  aria-label={t.label}
-                  aria-pressed={isSelected}
-                >
-                  <span className="text-xl">{t.emoji}</span>
-                  <span
-                    className={cn(
-                      'text-center text-[10px] font-medium leading-tight',
-                      isSelected
-                        ? 'text-foreground'
-                        : 'text-muted-foreground'
-                    )}
-                  >
-                    {t.label.split(' / ')[0]}
-                  </span>
-                  {isSelected && (
-                    <motion.div
-                      layoutId="edit-type-selected-indicator"
-                      className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full"
-                      style={{ backgroundColor: t.primaryColor }}
-                    >
-                      <Check className="h-2.5 w-2.5 text-white" />
-                    </motion.div>
-                  )}
-                </motion.button>
-              )
-            })}
-          </motion.div>
-        </div>
-
-        {/* Animated Theme Banner */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={selectedType}
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0.2 }}
-            className={cn(
-              'flex items-center gap-3 rounded-xl p-4',
-              theme.bgTint,
-              theme.bgTintDark
-            )}
-          >
-            <motion.span
-              key={`emoji-${selectedType}`}
-              variants={
-                eventAnimations[theme.animation] ??
-                eventAnimations.fadeSlide
-              }
-              animate="animate"
-              className="text-3xl"
-            >
-              {theme.emoji}
-            </motion.span>
-            <div>
-              <p className="font-semibold">{theme.label}</p>
-              <p className="text-sm text-muted-foreground">
-                {theme.formDecoration}
-              </p>
-            </div>
-          </motion.div>
-        </AnimatePresence>
-
-        <Separator />
-
-        {/* Form Fields */}
-        <div className="space-y-4">
-          {/* Title */}
-          <div className="space-y-2">
-            <Label htmlFor="title">Title *</Label>
-            <Input
-              id="title"
-              placeholder="What's the event called?"
-              aria-invalid={!!errors.title}
-              {...register('title')}
-            />
-            {errors.title && (
-              <p className="text-xs text-destructive">
-                {errors.title.message as string}
-              </p>
-            )}
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              placeholder="Add details about this event..."
-              rows={3}
-              {...register('description')}
-            />
-          </div>
-
-          {/* All Day Toggle */}
-          <div className="flex items-center gap-3">
-            <Controller
-              name="all_day"
-              control={control}
-              render={({ field }) => (
-                <Switch
-                  id="all_day"
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              )}
-            />
-            <Label htmlFor="all_day">All day event</Label>
-          </div>
-
-          {/* Date/Time Row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="start_time">Start *</Label>
-              <Input
-                id="start_time"
-                type={allDay ? 'date' : 'datetime-local'}
-                aria-invalid={!!errors.start_time}
-                {...register('start_time')}
-              />
-              {errors.start_time && (
-                <p className="text-xs text-destructive">
-                  {errors.start_time.message as string}
-                </p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="end_time">End *</Label>
-              <Input
-                id="end_time"
-                type={allDay ? 'date' : 'datetime-local'}
-                aria-invalid={!!errors.end_time}
-                {...register('end_time')}
-              />
-              {errors.end_time && (
-                <p className="text-xs text-destructive">
-                  {errors.end_time.message as string}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Location */}
-          <div className="space-y-2">
-            <Label htmlFor="location">Location</Label>
-            <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="location"
-                placeholder="Add a location"
-                className="pl-9"
-                {...register('location')}
-              />
-            </div>
-          </div>
-
-          {/* Virtual Link */}
-          <div className="space-y-2">
-            <Label htmlFor="virtual_link">Virtual Link</Label>
-            <div className="relative">
-              <Link2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="virtual_link"
-                type="url"
-                placeholder="https://zoom.us/j/..."
-                className="pl-9"
-                {...register('virtual_link')}
-              />
-            </div>
-          </div>
-
-          {/* Status / Priority / Visibility Row */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Controller
-                name="status"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {EVENT_STATUSES.map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {s.charAt(0).toUpperCase() + s.slice(1)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Priority</Label>
-              <Controller
-                name="priority"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PRIORITIES.map((p) => (
-                        <SelectItem key={p} value={p}>
-                          {p.charAt(0).toUpperCase() + p.slice(1)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Visibility</Label>
-              <Controller
-                name="visibility"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {VISIBILITIES.map((v) => (
-                        <SelectItem key={v} value={v}>
-                          {v.charAt(0).toUpperCase() + v.slice(1)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-          </div>
-
-          {/* Tags */}
-          <div className="space-y-2">
-            <Label htmlFor="tags">Tags</Label>
-            <Input
-              id="tags"
-              placeholder="party, outdoor, family (comma-separated)"
-              value={tagsInput}
-              onChange={(e) => setTagsInput(e.target.value)}
-            />
-          </div>
-
-          {/* Budget */}
-          <div className="space-y-2">
-            <Label htmlFor="budget">Budget</Label>
-            <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="budget"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                className="pl-9"
-                {...register('budget', {
-                  setValueAs: (v: string) =>
-                    v === '' ? null : parseFloat(v),
-                })}
-              />
-            </div>
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* Submit */}
-        <Button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full text-white transition-opacity hover:opacity-90"
+      {/* Themed Form Wrapper */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={selectedType}
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.98 }}
+          transition={{ duration: 0.3 }}
+          className="relative overflow-hidden rounded-2xl border-2 p-6 shadow-sm"
           style={{
-            backgroundColor: theme.primaryColor,
-            borderColor: theme.primaryColor,
+            borderColor: `${theme.primaryColor}40`,
+            background: `linear-gradient(135deg, ${theme.primaryColor}08 0%, transparent 50%)`,
           }}
         >
-          {isSubmitting ? (
-            <span className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Saving...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              <span>{theme.emoji}</span>
-              Save Changes
-            </span>
-          )}
-        </Button>
-      </form>
+          {/* Floating animated emoji — top-right */}
+          <motion.div
+            variants={animationVariant}
+            animate="animate"
+            className="pointer-events-none absolute right-6 top-4 select-none text-6xl opacity-15"
+          >
+            {theme.emoji}
+          </motion.div>
+
+          {/* Second floating emoji — bottom-left */}
+          <motion.div
+            variants={animationVariant}
+            animate="animate"
+            className="pointer-events-none absolute -bottom-2 -left-2 select-none text-5xl opacity-10"
+            style={{ animationDelay: '0.5s' }}
+          >
+            {theme.emoji}
+          </motion.div>
+
+          {/* Gradient blob */}
+          <div
+            className="pointer-events-none absolute -right-24 -top-24 h-48 w-48 rounded-full opacity-15 blur-3xl"
+            style={{ backgroundColor: theme.primaryColor }}
+          />
+          <div
+            className="pointer-events-none absolute -bottom-16 -left-16 h-32 w-32 rounded-full opacity-10 blur-3xl"
+            style={{ backgroundColor: theme.primaryColor }}
+          />
+
+          <form onSubmit={handleSubmit(onSubmit)} className="relative space-y-5">
+            {/* ─── Event Type Dropdown ─── */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Event Type</Label>
+              <Select value={selectedType} onValueChange={(v) => handleTypeSelect(v as EventType)}>
+                <SelectTrigger
+                  className="w-full text-left"
+                  style={{ borderColor: `${theme.primaryColor}30` }}
+                >
+                  <SelectValue>
+                    <span className="flex items-center gap-2">
+                      <span className="text-lg">{theme.emoji}</span>
+                      <span>{theme.label}</span>
+                    </span>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {EVENT_TYPES.map((type) => {
+                    const t = EVENT_THEMES[type]
+                    return (
+                      <SelectItem key={type} value={type}>
+                        <span className="flex items-center gap-2">
+                          <span>{t.emoji}</span>
+                          <span>{t.label}</span>
+                        </span>
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* ─── Theme description ─── */}
+            <div
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm"
+              style={{
+                backgroundColor: `${theme.primaryColor}10`,
+                color: theme.primaryColor,
+              }}
+            >
+              <span className="text-lg">{theme.emoji}</span>
+              <span className="font-medium">{theme.formDecoration}</span>
+            </div>
+
+            <Separator style={{ backgroundColor: `${theme.primaryColor}20` }} />
+
+            {/* ─── Title ─── */}
+            <div className="space-y-2">
+              <Label htmlFor="title">Title *</Label>
+              <Input
+                id="title"
+                placeholder="What's the event called?"
+                aria-invalid={!!errors.title}
+                style={{ borderColor: errors.title ? undefined : `${theme.primaryColor}20` }}
+                {...register('title')}
+              />
+              {errors.title && (
+                <p className="text-xs text-destructive">{errors.title.message as string}</p>
+              )}
+            </div>
+
+            {/* ─── Description ─── */}
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                placeholder="Add details about this event..."
+                rows={3}
+                style={{ borderColor: `${theme.primaryColor}20` }}
+                {...register('description')}
+              />
+            </div>
+
+            {/* ─── All Day Toggle ─── */}
+            <div className="flex items-center gap-3">
+              <Controller
+                name="all_day"
+                control={control}
+                render={({ field }) => (
+                  <Switch
+                    id="all_day"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                )}
+              />
+              <Label htmlFor="all_day">All day event</Label>
+            </div>
+
+            {/* ─── Date/Time Row ─── */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="start_time">Start *</Label>
+                <Input
+                  id="start_time"
+                  type={allDay ? 'date' : 'datetime-local'}
+                  aria-invalid={!!errors.start_time}
+                  style={{ borderColor: `${theme.primaryColor}20` }}
+                  {...register('start_time')}
+                />
+                {errors.start_time && (
+                  <p className="text-xs text-destructive">{errors.start_time.message as string}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="end_time">End *</Label>
+                <Input
+                  id="end_time"
+                  type={allDay ? 'date' : 'datetime-local'}
+                  aria-invalid={!!errors.end_time}
+                  style={{ borderColor: `${theme.primaryColor}20` }}
+                  {...register('end_time')}
+                />
+                {errors.end_time && (
+                  <p className="text-xs text-destructive">{errors.end_time.message as string}</p>
+                )}
+              </div>
+            </div>
+
+            {/* ─── Event Mode Dropdown ─── */}
+            <div className="space-y-2">
+              <Label>Event Mode</Label>
+              <Select value={eventMode} onValueChange={handleModeChange}>
+                <SelectTrigger
+                  className="w-full"
+                  style={{ borderColor: `${theme.primaryColor}30` }}
+                >
+                  <SelectValue>
+                    <span className="flex items-center gap-2">
+                      {eventMode === 'onsite' && <><MapPin className="h-4 w-4" /> On-site</>}
+                      {eventMode === 'online' && <><Video className="h-4 w-4" /> Online</>}
+                      {eventMode === 'hybrid' && <><Globe className="h-4 w-4" /> Hybrid</>}
+                    </span>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="onsite">
+                    <span className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" /> On-site
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="online">
+                    <span className="flex items-center gap-2">
+                      <Video className="h-4 w-4" /> Online
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="hybrid">
+                    <span className="flex items-center gap-2">
+                      <Globe className="h-4 w-4" /> Hybrid
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* ─── Location (on-site / hybrid) ─── */}
+            {(eventMode === 'onsite' || eventMode === 'hybrid') && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-2"
+              >
+                <Label htmlFor="location">Location</Label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="location"
+                    placeholder="Add a location"
+                    className="pl-9"
+                    style={{ borderColor: `${theme.primaryColor}20` }}
+                    {...register('location')}
+                  />
+                </div>
+              </motion.div>
+            )}
+
+            {/* ─── Virtual Link (online / hybrid) ─── */}
+            {(eventMode === 'online' || eventMode === 'hybrid') && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-2"
+              >
+                <Label htmlFor="virtual_link">Virtual Link</Label>
+                <div className="relative">
+                  <Link2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="virtual_link"
+                    type="url"
+                    placeholder="https://zoom.us/j/..."
+                    className="pl-9"
+                    style={{ borderColor: `${theme.primaryColor}20` }}
+                    {...register('virtual_link')}
+                  />
+                </div>
+              </motion.div>
+            )}
+
+            {/* ─── Status / Priority / Visibility ─── */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Controller
+                  name="status"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {EVENT_STATUSES.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {s.charAt(0).toUpperCase() + s.slice(1)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Priority</Label>
+                <Controller
+                  name="priority"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PRIORITIES.map((p) => (
+                          <SelectItem key={p} value={p}>
+                            {p.charAt(0).toUpperCase() + p.slice(1)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Visibility</Label>
+                <Controller
+                  name="visibility"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {VISIBILITIES.map((v) => (
+                          <SelectItem key={v} value={v}>
+                            {v.charAt(0).toUpperCase() + v.slice(1)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* ─── Tags ─── */}
+            <div className="space-y-2">
+              <Label htmlFor="tags">Tags</Label>
+              <Input
+                id="tags"
+                placeholder="party, outdoor, family (comma-separated)"
+                value={tagsInput}
+                onChange={(e) => setTagsInput(e.target.value)}
+                style={{ borderColor: `${theme.primaryColor}20` }}
+              />
+            </div>
+
+            {/* ─── Budget ─── */}
+            <div className="space-y-2">
+              <Label htmlFor="budget">Budget</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="budget"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  className="pl-9"
+                  style={{ borderColor: `${theme.primaryColor}20` }}
+                  {...register('budget', {
+                    setValueAs: (v: string) => (v === '' ? null : parseFloat(v)),
+                  })}
+                />
+              </div>
+            </div>
+
+            {/* ─── Theme-Specific Fields ─── */}
+            {activeThemeFields.length > 0 && (
+              <>
+                <Separator style={{ backgroundColor: `${theme.primaryColor}20` }} />
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowDetails(!showDetails)}
+                    className="flex w-full items-center justify-between text-sm font-semibold"
+                    style={{ color: theme.primaryColor }}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span>{theme.emoji}</span>
+                      {theme.label.split(' / ')[0]} Details
+                    </span>
+                    <ChevronDown
+                      className={cn(
+                        'h-4 w-4 transition-transform',
+                        showDetails && 'rotate-180'
+                      )}
+                    />
+                  </button>
+
+                  <AnimatePresence>
+                    {showDetails && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="space-y-3 overflow-hidden"
+                      >
+                        {activeThemeFields.map((field) => (
+                          <div key={field.id} className="space-y-1.5">
+                            <Label htmlFor={`theme_${field.id}`} className="text-sm">
+                              {field.label}
+                            </Label>
+                            {field.type === 'textarea' ? (
+                              <Textarea
+                                id={`theme_${field.id}`}
+                                placeholder={field.placeholder}
+                                rows={2}
+                                value={themeFields[field.id] ?? ''}
+                                onChange={(e) =>
+                                  setThemeFields((prev) => ({
+                                    ...prev,
+                                    [field.id]: e.target.value,
+                                  }))
+                                }
+                                style={{ borderColor: `${theme.primaryColor}20` }}
+                              />
+                            ) : (
+                              <Input
+                                id={`theme_${field.id}`}
+                                placeholder={field.placeholder}
+                                value={themeFields[field.id] ?? ''}
+                                onChange={(e) =>
+                                  setThemeFields((prev) => ({
+                                    ...prev,
+                                    [field.id]: e.target.value,
+                                  }))
+                                }
+                                style={{ borderColor: `${theme.primaryColor}20` }}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </>
+            )}
+
+            <Separator style={{ backgroundColor: `${theme.primaryColor}20` }} />
+
+            {/* ─── Submit ─── */}
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full text-white transition-opacity hover:opacity-90"
+              style={{
+                backgroundColor: theme.primaryColor,
+                borderColor: theme.primaryColor,
+              }}
+            >
+              {isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <span>{theme.emoji}</span>
+                  Save Changes
+                </span>
+              )}
+            </Button>
+          </form>
+        </motion.div>
+      </AnimatePresence>
     </motion.div>
   )
 }
