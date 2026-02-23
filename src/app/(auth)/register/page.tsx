@@ -111,26 +111,31 @@ export default function RegisterPage() {
     try {
       const supabase = createClient()
       const fullName = `${values.first_name} ${values.last_name}`
-      const { data, error } = await supabase.auth.signUp({
-        email: values.email,
-        password: values.password,
-        options: {
-          data: { full_name: fullName },
-        },
-      })
 
-      if (error) {
-        toast.error(error.message)
+      // Step 1: Create user via server-side API (uses service role, bypasses RLS)
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: values.email,
+          password: values.password,
+          full_name: fullName,
+        }),
+      })
+      const result = await res.json()
+      if (!res.ok) {
+        toast.error(result.error || 'Registration failed')
         return
       }
 
-      // Ensure profile exists (fallback if DB trigger didn't fire)
-      if (data.user) {
-        await supabase.from('profiles').upsert({
-          id: data.user.id,
-          full_name: fullName,
-          email: values.email,
-        }, { onConflict: 'id' })
+      // Step 2: Sign in with the newly created account
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: values.email,
+        password: values.password,
+      })
+      if (signInError) {
+        toast.error(signInError.message)
+        return
       }
 
       toast.success('Account created! Welcome to EventSync.')
