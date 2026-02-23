@@ -150,6 +150,7 @@ function LoginForm() {
                         type={showPassword ? 'text' : 'password'}
                         placeholder="Enter your password"
                         autoComplete="current-password"
+                        className="pr-10"
                         aria-invalid={!!errors.password}
                         {...register('password')}
                       />
