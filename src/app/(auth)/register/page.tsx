@@ -111,7 +111,7 @@ export default function RegisterPage() {
     try {
       const supabase = createClient()
       const fullName = `${values.first_name} ${values.last_name}`
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
         options: {
@@ -122,6 +122,15 @@ export default function RegisterPage() {
       if (error) {
         toast.error(error.message)
         return
+      }
+
+      // Ensure profile exists (fallback if DB trigger didn't fire)
+      if (data.user) {
+        await supabase.from('profiles').upsert({
+          id: data.user.id,
+          full_name: fullName,
+          email: values.email,
+        }, { onConflict: 'id' })
       }
 
       toast.success('Account created! Welcome to EventSync.')
