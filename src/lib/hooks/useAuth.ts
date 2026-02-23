@@ -14,15 +14,23 @@ export function useAuth() {
   useEffect(() => {
     // Get initial session
     const getSession = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-      if (user) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single()
-        setProfile(data)
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        setUser(user)
+        if (user) {
+          const controller = new AbortController()
+          const timeout = setTimeout(() => controller.abort(), 8000)
+          const { data } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .abortSignal(controller.signal)
+            .single()
+          clearTimeout(timeout)
+          setProfile(data)
+        }
+      } catch {
+        // Profile fetch timed out — continue without profile data
       }
       setLoading(false)
     }
