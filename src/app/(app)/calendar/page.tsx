@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -18,10 +18,27 @@ import { pageVariants } from '@/lib/constants/animations'
 import type { EventType } from '@/types/events'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { cn } from '@/lib/utils'
+
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const DAY_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
 export default function CalendarPage() {
   const router = useRouter()
   const { events, loading, todayEvents } = useEvents()
+  const calendarRef = useRef<FullCalendar>(null)
+
+  // Calendar preferences
+  const [firstDay, setFirstDay] = useState(0)
+  const [customDays, setCustomDays] = useState(7)
+  const [hiddenDays, setHiddenDays] = useState<number[]>([])
 
   const calendarEvents = useMemo(
     () =>
@@ -72,6 +89,34 @@ export default function CalendarPage() {
       </div>
     )
   }, [])
+
+  function handleFirstDayChange(value: string) {
+    if (value === 'today') {
+      setFirstDay(new Date().getDay())
+    } else {
+      setFirstDay(parseInt(value))
+    }
+  }
+
+  function handleCustomDaysChange(value: string) {
+    const days = parseInt(value)
+    setCustomDays(days)
+    // Switch to the custom days view
+    setTimeout(() => {
+      calendarRef.current?.getApi().changeView('customDays')
+    }, 0)
+  }
+
+  function toggleDay(dayIndex: number) {
+    setHiddenDays((prev) => {
+      if (prev.includes(dayIndex)) {
+        return prev.filter((d) => d !== dayIndex)
+      }
+      // Don't hide all days — keep at least 1 visible
+      if (prev.length >= 6) return prev
+      return [...prev, dayIndex]
+    })
+  }
 
   if (loading) {
     return (
@@ -132,16 +177,109 @@ export default function CalendarPage() {
         </Button>
       </div>
 
+      {/* Calendar Settings Bar */}
+      <div className="flex flex-wrap items-center gap-4 rounded-lg border bg-card/50 px-4 py-2.5">
+        {/* First Day of Week */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+            Week starts
+          </span>
+          <Select
+            value={firstDay === new Date().getDay() ? 'today' : String(firstDay)}
+            onValueChange={handleFirstDayChange}
+          >
+            <SelectTrigger className="h-8 w-[120px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Today</SelectItem>
+              {DAY_LABELS.map((label, i) => (
+                <SelectItem key={i} value={String(i)}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Separator */}
+        <div className="h-6 w-px bg-border" />
+
+        {/* Custom Days View */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+            Days
+          </span>
+          <Select value={String(customDays)} onValueChange={handleCustomDaysChange}>
+            <SelectTrigger className="h-8 w-[72px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {[3, 5, 7, 10, 14].map((d) => (
+                <SelectItem key={d} value={String(d)}>
+                  {d} days
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Separator */}
+        <div className="h-6 w-px bg-border" />
+
+        {/* Day Visibility Toggles */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+            Show
+          </span>
+          <div className="flex gap-1">
+            {DAY_SHORT.map((label, i) => {
+              const isHidden = hiddenDays.includes(i)
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => toggleDay(i)}
+                  className={cn(
+                    'flex h-7 w-7 items-center justify-center rounded-md text-xs font-medium transition-colors',
+                    isHidden
+                      ? 'bg-muted text-muted-foreground line-through'
+                      : 'bg-primary text-primary-foreground'
+                  )}
+                  title={`${isHidden ? 'Show' : 'Hide'} ${DAY_LABELS[i]}`}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
       {/* Calendar */}
       <div className="min-h-0 flex-1 rounded-xl border bg-card p-4 shadow-sm">
         <FullCalendar
+          ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
           initialView="dayGridMonth"
           headerToolbar={{
             left: 'prev,next today',
             center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
+            right: 'dayGridMonth,timeGridWeek,customDays,timeGridDay,listWeek',
           }}
+          views={{
+            dayGridMonth: { buttonText: 'month' },
+            timeGridWeek: { buttonText: 'week' },
+            timeGridDay: { buttonText: 'day' },
+            listWeek: { buttonText: 'list' },
+            customDays: {
+              type: 'timeGrid',
+              duration: { days: customDays },
+              buttonText: `${customDays}d`,
+            },
+          }}
+          firstDay={firstDay}
+          hiddenDays={hiddenDays}
           events={calendarEvents}
           eventClick={handleEventClick}
           dateClick={handleDateClick}
@@ -151,7 +289,7 @@ export default function CalendarPage() {
           nowIndicator
           selectable
           selectMirror
-          weekends
+          weekends={!hiddenDays.includes(0) || !hiddenDays.includes(6)}
           eventDisplay="block"
         />
       </div>
